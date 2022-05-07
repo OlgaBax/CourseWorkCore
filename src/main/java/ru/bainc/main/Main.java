@@ -10,41 +10,20 @@ import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 
 public class Main {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException {
         Map<String, List<Path>> hashFiles = new ConcurrentHashMap<>();
         long startTime = System.currentTimeMillis();
-        Thread thread = new Thread(() -> {
-            try {
-                FilesWalk.listPaths(Paths.get(args[0]))
-                        .stream()
-                        .map(element -> {
-                            try {
-                                String hash = SHA256.getFileChecksum(element);
-                                List<Path> pathList;
+        List<Path> listPaths = FilesWalk.listPaths(Paths.get(args[0]));
+        fillMaps(hashFiles, listPaths);
+        System.out.println();
 
-                                if (hashFiles.containsKey(hash)) {
-                                    pathList = hashFiles.get(hash);
-                                    pathList.add(element);
-                                } else {
-                                    pathList = new ArrayList<>();
-                                    pathList.add(element);
-                                    hashFiles.put(hash, pathList);
-                                }
-                                return hash;
-                            } catch (IOException | NoSuchAlgorithmException e) {
-                                e.printStackTrace();
-                                return null;
-                            }
-                        }).count();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-        thread.start();
-        thread.join();
 
         double mesto = (double) calculateSize(hashFiles);
         System.out.println("Освободится в байтах: " + mesto);
@@ -62,5 +41,30 @@ public class Main {
             }
         }
         return result;
+    }
+
+    public static void fillMaps(Map<String, List<Path>> hashFiles, List<Path> listFiles) {
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        for (Path path : listFiles) {
+            executorService.submit(() -> {
+                try {
+                    String hash = SHA256.getFileChecksum(path);
+                    List<Path> pathList;
+                    if (hashFiles.containsKey(hash)) {
+                        pathList = hashFiles.get(hash);
+                        pathList.add(path);
+                    } else {
+                        pathList = new ArrayList<>();
+                        pathList.add(path);
+                        hashFiles.put(hash, pathList);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+        executorService.shutdown();
     }
 }
