@@ -8,11 +8,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class FilesWalk {
-//    public static void main(String[] args) throws IOException {
-//        Path path = Paths.get("C:\\Users\\BabushkinaOA\\Desktop\\B");
-//        List<Path> paths = listFiles(path);
-//        System.out.println(paths);
-//    }
     public static List<Path> listPaths (Path path) throws IOException {
         List<Path> result;
         try (Stream<Path> walk = Files.walk(path)) { //создаем стрим <Path> walk-это название
